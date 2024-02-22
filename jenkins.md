@@ -38,7 +38,26 @@ Plugins give us additional functionality. Some can be installed when first setti
 1. Click "Configure"
 1. Locate "Scan Repository Triggers" and check the box "Periodically if not otherwise run"
 1. Select a time interval and save. Jenkins should scan for changes based on this interval and perform builds when new commits are pushed.
+1. 
 
 ### Examples from 2/21:
 - https://github.com/roryeiffe/hello-world-jenkins
 - https://github.com/roryeiffe/simple-java-build 
+
+### Accessing Private Repos
+In order to access a private repo, you must set up credentials in Jenkins. 
+
+First, create a PAT (Personal Access Token) in Github by following these steps: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens. 
+
+Make sure to copy the PAT. 
+
+In Jenkins, go to Dashboard -> Manage Jenkins -> Credentials
+
+Add a new set of credentials:
+1. Kind: Username with password
+1. Scope: Global
+1. Username: Github username
+1. Password: PAT
+1. Click "Create". 
+
+When configuring the source in your pipeline, just add the credentials that you just configured. 
