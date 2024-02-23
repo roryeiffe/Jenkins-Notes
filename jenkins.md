@@ -61,3 +61,37 @@ Add a new set of credentials:
 1. Click "Create". 
 
 When configuring the source in your pipeline, just add the credentials that you just configured. 
+
+
+## Jenkins Run after every Commit
+How can we get our pipeline to run whenever there is a new commit?
+
+We saw that we can set an interval for every x minutes/hours in order to check for updates. But we want a way to continuously monitor.
+
+### Github Webhooks
+On Github repo, go to settings, find Webhooks on the left sidebar and click Add Webhook. 
+
+Select content-type to be application/json and leave events as just pushes. 
+
+For the payload url, we can't put in localhost so we will need some service to expose that endpoint publicly. 
+
+### Ngrok
+Can download [here](https://ngrok.com/download) and follow the steps.
+
+Can open the program or run ngrok commands from command line.
+
+Can run ngrok http port-num, ex: ngrok http 8080. 
+
+Should see a public endpoint that we can enter in our browser and see our Jenkins instance. 
+
+Now, we can go back to Github to the webhook configuration, enter in the payload url public-endpoint/github-webhook/
+
+### Configuring the Pipeline in Jenkins
+Add a new item, choose Pipeline type. Configure the Github link.
+
+Under build triggers, check the box "GitHub hook trigger for GITScm polling". 
+
+Under pipeline, choose where we want to get the Jenkinsfile (Pipeline Script from SCM). Then, just configure the repo link, branch, and location of Jenkinsfile (and credentials if necessary). 
+
+Hit save + apply. Try committing/pushing to the repo and note if the build starts automatically. 
+
