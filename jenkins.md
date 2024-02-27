@@ -99,6 +99,7 @@ Hit save + apply. Try committing/pushing to the repo and note if the build start
 If you have a project with multiple Jenkinsfiles, you can separate them into different branches. Each branch can have a Jenkinsfile with different steps. When creating the pipeline in Jenkins, just make sure to select Multi-Branch pipeline and configure the Github source accordingly (specify the repo link, path to Jenkinsfiles, credentials if necessary).
 
 ### Simple Java Build
+```Groovy
 pipeline {
     agent { 
         docker { 
@@ -118,3 +119,7 @@ pipeline {
         }
     }
 }
+```
+
+### AWS
+
