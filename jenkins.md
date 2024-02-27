@@ -95,3 +95,26 @@ Under pipeline, choose where we want to get the Jenkinsfile (Pipeline Script fro
 
 Hit save + apply. Try committing/pushing to the repo and note if the build starts automatically. 
 
+### Multiple Jenkinsfiles in different branches
+If you have a project with multiple Jenkinsfiles, you can separate them into different branches. Each branch can have a Jenkinsfile with different steps. When creating the pipeline in Jenkins, just make sure to select Multi-Branch pipeline and configure the Github source accordingly (specify the repo link, path to Jenkinsfiles, credentials if necessary).
+
+### Simple Java Build
+pipeline {
+    agent { 
+        docker { 
+            image 'maven:3.9.6-eclipse-temurin-11-alpine'
+        } 
+    }
+    stages {
+        stage('Build') {
+            steps {
+                sh 'mvn package'
+            }
+        }
+        stage('Post-Build') {
+          steps {
+            archiveArtifacts 'target/demo-0.0.1-SNAPSHOT.jar'
+          }
+        }
+    }
+}
