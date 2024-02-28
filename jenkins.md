@@ -121,5 +121,87 @@ pipeline {
 }
 ```
 
-### AWS
+### On AWS
+1. Log in to the AWS console as the root user. 
+1. Create an IAM user that has full access to creating an AWS Elastic Beanstalk instance.
+1. Create an access key for your user and note it down.
 
+### Jenkins
+1. Install the AWS Elastic Beanstalk plugin (AWSEB)
+  1. This should install necessary dependencies
+1. Add credentials
+  1. Manage Jenkins -> Credentials -> System -> Global Credentials
+  1. Choose "AWS Credentials" and fill in your access key from earlier
+1. Pipeline
+
+### AWS Set up Elastic Beanstalk
+1. Create a new environment
+  1. Pick a name
+  1. Platform -> Java 11
+  1. Code -> Sample App
+  1. Review other settings and create
+
+
+### Jenkinsfile
+
+```groovy
+// Define pipeline stages
+pipeline {
+    agent { 
+        docker { 
+            image 'maven:3.9.6-eclipse-temurin-11-alpine'
+        } 
+    }
+
+    stages {
+        // Checkout code from Github
+        stage('Checkout Code') {
+            steps {
+                git branch: 'master',
+                    credentialsId: 'aa74eeb8-0e1b-4fb2-bb4b-fe28cde71a8c', // Replace with your credential ID
+                    url: 'https://github.com/roryeiffe/web-app-2-2024' // Replace with your repo URL
+            }
+        }
+
+        // Build the application with Maven
+        stage('Build with Maven') {
+            steps {
+                sh 'mvn clean install'
+            }
+        }
+
+        // Deploy to Elastic Beanstalk
+        stage('Deploy to Elastic Beanstalk') {
+            steps {
+                step($class: 'AWSEBDeploymentBuilder',
+                    credentialId: "aws-cred",
+                    awsRegion: "us-east-1",
+                    applicationName: "jenkins-app",
+                    environmentName: "Jenkins-app-env",
+                    keyPrefix: "jenkins-app/builds",
+                    rootObject: "target/demo-0.0.1-SNAPSHOT.jar",
+                    versionLabelFormat: "-${BUILD_NUMBER}",)
+                }
+            
+        }
+    }
+}
+```
+
+#### Troubleshooting
+- Make sure the web app has a default endpoint set up (/)
+- Double-check versions, I've had luck with Java 11 (will probably need to down-grade Spring version to 2-something)
+
+
+
+## Practice Questions
+1. What is Jenkins, and what is its purpose?
+1. Explain the concept of Continuous Integration (CI) and Continuous Delivery (CD). How does Jenkins fit into these practices?
+1. Describe the core components of Jenkins: Master, Slave (Agent), Job, and Pipeline.
+1. Explain the different ways you can trigger a Jenkins job.
+1. How can you secure sensitive information like credentials within your Jenkins pipelines?
+1. What are some plugins we used? And what is their purpose?
+1. How can we monitor/troubleshoot our Jenkins builds?
+1. What are some of the types of items we can create in Jenkins?
+1. How could we set up a Jenkins pipeline for a repository with multiple Jenkinsfiles in different branches?
+1. Outline the general steps in setting up a pipeline to deploy a web app to some cloud service. 
