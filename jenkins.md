@@ -192,8 +192,6 @@ pipeline {
 - Make sure the web app has a default endpoint set up (/)
 - Double-check versions, I've had luck with Java 11 (will probably need to down-grade Spring version to 2-something)
 
-
-
 ## Practice Questions
 1. What is Jenkins, and what is its purpose?
 1. Explain the concept of Continuous Integration (CI) and Continuous Delivery (CD). How does Jenkins fit into these practices?
@@ -205,3 +203,129 @@ pipeline {
 1. What are some of the types of items we can create in Jenkins?
 1. How could we set up a Jenkins pipeline for a repository with multiple Jenkinsfiles in different branches?
 1. Outline the general steps in setting up a pipeline to deploy a web app to some cloud service. 
+
+
+## Deploying to Lambda
+
+### On AWS
+1. Log in to the AWS console as the root user. 
+1. Create an IAM user that has full access to creating an AWS Lambda Function
+1. Create an access key for your user and note it down.
+1. Create an AWS Lambda function, ensure the platform matches what code you are developing on
+
+### On Jenkins
+1. Add credentials
+  1. Manage Jenkins -> Credentials -> System -> Global Credentials
+  1. Choose "AWS Credentials" and fill in your access key from earlier
+1. Create a Pipeline
+  1. See sample Jenkinsfile below
+
+
+### Jenkinsfile
+
+```groovy
+pipeline {
+    agent { 
+        docker { 
+            image 'roryeiffe/mavenaws'
+        } 
+    }
+
+    stages {
+        stage('Checkout code') {
+            steps {
+                git branch: 'master', url: 'https://github.com/roryeiffe/web-app-2-2024'
+            }
+        }
+
+        stage('Build Java application') {
+            steps {
+                sh 'mvn package' // Replace with your build command (e.g., gradle build)
+            }
+        }
+
+        // stage('install aws cli') {
+        //   steps {
+        //     sh 'curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"'
+        //     sh 'unzip awscliv2.zip'
+        //     sh './aws/install'
+        //   }
+        // }
+
+        stage('Deploy to AWS Lambda') {
+            steps {
+              withCredentials([aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY', credentialsId: 'aws-lam')]) {
+            
+                // Replace the following with your Lambda function details
+                // def functionName = 'jenkins-func'
+                // def zipFile = 'target/demo-0.0.1-SNAPSHOT.jar' // Adjust based on your build output
+
+                // Zip the application
+                sh "zip -r target/demo-0.0.1-SNAPSHOT.jar target/*"
+
+                // Upload the zip file to Lambda
+                sh "aws lambda update-function-code --function-name jenkins-func --zip-file fileb://target/demo-0.0.1-SNAPSHOT.jar"
+              }                
+            }
+        }
+    }
+}
+```
+
+### Dockerfile
+Because we had to use the AWS CLI, we need a Docker image that includes both maven and AWS CLI:
+
+```Dockerfile
+FROM eclipse-temurin:11-jdk AS builder
+
+# Define variables
+ARG MAVEN_VERSION=3.9.6
+ARG USER_HOME_DIR="/root"
+ARG SHA=706f01b20dec0305a822ab614d51f32b07ee11d0218175e55450242e49d2156386483b506b3a4e8a03ac8611bae96395fd5eec15f50d3013d5deed6d1ee18224
+
+# Configure Maven installation
+ENV MAVEN_HOME /usr/share/maven
+ENV MAVEN_CONFIG "$USER_HOME_DIR/.m2"
+
+# Install dependencies
+RUN apt-get update && apt-get install -y ca-certificates curl git gnupg dirmngr --no-install-recommends && rm -rf /var/lib/apt/lists/*
+
+# Download and verify Maven
+RUN set -eux; \
+    curl -fsSLO --compressed https://downloads.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz; \
+    echo "${SHA} *apache-maven-${MAVEN_VERSION}-bin.tar.gz" | sha512sum -c -; \
+    curl -fsSLO --compressed https://downloads.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz.asc; \
+    export GNUPGHOME="$(mktemp -d)"; \
+    for KEY in \
+      6A814B1F869C2BBEAB7CB7271A2A1C94BDE89688 \
+      29BEA2A645F2D6CED7FB12E02B172E3E156466E8; do \
+      gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$KEY"; \
+    done; \
+    gpg --batch --verify apache-maven-${MAVEN_VERSION}-bin.tar.gz.asc apache-maven-${MAVEN_VERSION}-bin.tar.gz
+
+# Install Maven
+RUN mkdir -p ${MAVEN_HOME} ${MAVEN_HOME}/ref; \
+    tar -xzf apache-maven-${MAVEN_VERSION}-bin.tar.gz -C ${MAVEN_HOME} --strip-components=1; \
+    ln -s ${MAVEN_HOME}/bin/mvn /usr/bin/mvn
+
+# Smoke test
+RUN mvn --version
+
+# Install AWS CLI
+RUN apt-get update && apt-get install -y awscli --no-install-recommends && rm -rf /var/lib/apt/lists/*
+
+# Final image
+FROM builder
+```
+
+- To push this image, we build it with 
+```
+docker build -t roryeiffe/mavenaws .
+```
+
+- and then push with 
+```
+docker push roryeiffe/mavenaws
+```
+
+- Now, we can configure our agent to use this in our Dockerfile.
